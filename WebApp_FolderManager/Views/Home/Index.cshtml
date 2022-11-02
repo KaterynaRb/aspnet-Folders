@@ -1,0 +1,101 @@
+﻿@model IEnumerable<WebApp_FolderManager.Models.Folder>
+
+@{
+    ViewBag.Title = "Home Page";
+}
+<div>
+    <h1>@ViewBag.Title</h1>
+
+    <h2> "Folder" - @ViewBag.CurrentDirectory</h2>
+
+    @foreach (var item in Model)
+    {
+        <p>
+            @Html.ActionLink(item.Name, "Index", new { currPath = item.FullPath })
+        </p>
+    }
+</div>
+
+
+<h3>Folder upload</h3>
+
+<div class="form-horizontal">
+    <div class="form-group">
+        <div class="col-md-10">
+            <label for="folder">Drag and drop folder</label>
+            <input type="file" id="folderpicker" name="files" mozdirectory directory />
+        </div>
+    </div>
+    @section scripts{
+        <script language="javascript" type="text/javascript">
+
+            var dropzone = document.getElementById('folderpicker');
+            let dirPaths = new Array();
+
+
+            dropzone.ondrop = function (e) {
+                var l = e.dataTransfer.items.length;
+
+                for (var i = 0; i < l; i++) {
+                    var entry = e.dataTransfer.items[i].webkitGetAsEntry();
+                    if (entry.isDirectory) {
+                        dirPaths = readcontents(entry, function () {
+                            //console.log(files)
+                        })
+
+                        console.log(dirPaths);
+                    }
+                }
+
+                function readcontents(folder, callback) {
+                    var reading = 0
+                    let contents = new Array();
+                    let arrDirectories = new Array();
+
+                    function readsome(reader) {
+                        reading = reading + 1
+                        reader.readEntries(function (entries) {
+                            reading = reading - 1
+                            for (var entry of entries) {
+                                if (entry.isDirectory) {
+                                    contents.push(entry);
+                                    arrDirectories.push(entry.fullPath)
+                                    readsome(entry.createReader())
+                                } else {
+                                    contents.push(entry)
+                                }
+                            }
+                            if (entries.length) {
+                                readsome(reader)
+                            } else if (reading == 0) {
+                                callback(contents)
+                            }
+                        })
+                    }
+                    readsome(folder.createReader());
+
+                    return arrDirectories;
+                }
+            }
+
+            function SendData() {
+                $.ajax({
+                    type: "POST",
+                    url: '/Home/Index',
+                    data: { strPaths: dirPaths },
+                    error: function () {
+                        alert("Ajax call failed");
+                    }
+                })
+            }
+
+        </script>
+    }
+
+    <div class="form-group">
+        <div class="col-md-offset-2 col-md-10">
+            <input type="submit" onclick="SendData()" value="Send" class="btn btn-default" />
+        </div>
+
+    </div>
+</div>
